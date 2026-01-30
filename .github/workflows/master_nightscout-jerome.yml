@@ -2,8 +2,7 @@ name: Build and deploy Nightscout to Azure Web App - nightscout-jerome
 
 on:
   push:
-    branches:
-      - master
+    branches: [ master ]
   workflow_dispatch:
 
 permissions:
@@ -13,14 +12,21 @@ permissions:
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # IMPORTANT: Do NOT run npm install here.
-      # Let Azure/Oryx install dependencies during deployment.
-      # This avoids missing node_modules/.cache/_ns_cache/* in App Service.
+      # Create a deployment ZIP WITHOUT node_modules and WITHOUT node_modules.tar.gz
+      # This forces Azure/Oryx to do a clean dependency install on deploy.
+      - name: Create deployment package
+        run: |
+          zip -r app.zip . \
+            -x ".git/*" \
+            -x ".github/*" \
+            -x "node_modules/*" \
+            -x "node_modules.tar.gz" \
+            -x "**/node_modules/*" \
+            -x "**/node_modules.tar.gz"
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -34,4 +40,4 @@ jobs:
         with:
           app-name: nightscout-jerome
           slot-name: Production
-          package: .
+          package: app.zip
